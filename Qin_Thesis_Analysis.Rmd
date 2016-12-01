@@ -25,6 +25,8 @@ library( texreg )
 library( stargazer )
 library( FactoMineR )
 
+
+
 #set theme default
 theme_set(theme_grey())
 

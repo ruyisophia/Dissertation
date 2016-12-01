@@ -1,0 +1,1176 @@
+---
+title: "Qin_Thesis_Preliminary"
+author: "Wenjuan Qin"
+date: "November 21, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#libraries
+library( arm )
+library( foreign )
+library( tidyverse)
+library( grid)
+library( gridExtra)
+library( corrplot )
+library( cowplot )
+library( ggplot2 )
+library( ggfortify)
+library( lmerTest )
+library( lme4 )
+library( lmtest )
+library( texreg )
+library( stargazer )
+library( FactoMineR )
+
+#set theme default
+theme_set(theme_grey())
+
+#setup working directory
+setwd("/Users/wenjuanqin/Dropbox/Dissertation/Analysis/R")
+getwd()
+
+#load raw data
+text <- read.csv("text.csv")
+head(text)
+stud <- read.csv("stud.csv")
+head(text)
+#merge text-level and student-level data
+dat <- merge (text, stud, by="sid", all.x = TRUE)
+head(dat)
+```
+
+## Part 1: Descriptive Statistics
+### 1.1. Data Distributions
+#### Histogram of Writing Quality
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+qh1 <- ggplot (subset(dat, register == "colloquial"), aes(x = score)) +
+  geom_histogram(binwidth=0.6) +
+  xlab("Colloquial Writing Quality")
+
+qh2 <- ggplot (subset(dat, register == "academic"), aes(x = score)) +
+  geom_histogram(binwidth=0.6) +
+  xlab("Academic Writing Quality")
+
+plot_grid(qh1, qh2, labels=c("A", "B"), ncol = 2, nrow = 1)
+
+```
+
+#### Histogram of Lexical Variables
+Lexical variables were normed to be counts per 100 words
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+lh1 <- ggplot (dat, aes(x = l_token)) +
+  geom_histogram() +
+  xlab("Total number of words")
+
+lh2 <- ggplot (dat, aes(x = l_vocd)) +
+  geom_histogram() +
+  xlab("Lexical diveristy")
+
+lh3 <- ggplot (dat, aes(x = l_morph_token_n)) +
+  geom_histogram() +
+  xlab("Freq of morph-complex words")
+
+lh4 <- ggplot (dat, aes(x = l_nom_token_n)) +
+  geom_histogram() +
+  xlab("Freq of nominalizations")
+
+lh5 <- ggplot (dat, aes(x = l_density_token_n)) +
+  geom_histogram() +
+  xlab("Freq of content words")
+
+plot_grid(lh1, lh2, lh3, lh4, lh5, labels=c("A", "B", "C", "D", "E"), ncol = 2, nrow = 3)
+
+```
+
+#### Histogram of Syntactic Variables 
+##### Clause-based Measures
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+sh1 <- ggplot (dat, aes(x = s_c)) +
+  geom_histogram() +
+  xlab("Num. of clauses")
+sh2 <- ggplot (dat, aes(x = s_mlc)) +
+  geom_histogram() +
+  xlab("Mean length of clause")
+sh3 <- ggplot (dat, aes(x = s_dcpc)) +
+  geom_histogram() +
+  xlab("Dependent clauses per clause")
+sh4 <- ggplot (dat, aes(x = s_cppc)) +
+  geom_histogram() +
+  xlab("Coordinate phrases per clause")
+sh5 <- ggplot (dat, aes(x = s_cnpc)) +
+  geom_histogram() +
+  xlab("Complex nominals per clause")
+
+plot_grid(sh1, sh2, sh3, sh4, sh5, labels=c("A", "B", "C", "D", "E"), ncol = 2, nrow = 3)
+```
+
+##### T-unit-based Measures
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+sh6 <- ggplot (dat, aes(x = s_t)) +
+  geom_histogram() +
+  xlab("Num. of T-units")
+
+sh7 <- ggplot (dat, aes(x = s_mlt)) +
+  geom_histogram() +
+  xlab("Mean length of T-units")
+
+sh8 <- ggplot (dat, aes(x = s_vppt)) +
+  geom_histogram() +
+  xlab("Verb phrases per T-units")
+
+sh9 <- ggplot (dat, aes(x = s_cpt)) +
+  geom_histogram() +
+  xlab("Coordinate phrases per T-units")
+
+sh10 <- ggplot (dat, aes(x = s_dcpt)) +
+  geom_histogram() +
+  xlab("Dependent clauses per T-units")
+
+sh11 <- ggplot (dat, aes(x = s_ctpt)) +
+  geom_histogram() +
+  xlab("Complext T-units per T-units")
+
+sh12 <- ggplot (dat, aes(x = s_cppt)) +
+  geom_histogram() +
+  xlab("Coordinate phrases per T-units")
+
+sh13 <- ggplot (dat, aes(x = s_cnpt)) +
+  geom_histogram() +
+  xlab("Complex nominals per T-units")
+
+plot_grid(sh6, sh7, sh8, sh9, 
+                  sh10, sh11, sh12, sh12,
+                  labels=c("A", "B", "C", "D", "E", "F", "G", "H"), ncol = 2, nrow = 4)
+
+```
+
+#### Histogram of Discourse Features
+##### Organizational Markers
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+#organizational markers
+dh1 <- ggplot (dat, aes(x = d_frm)) +
+  geom_histogram() +
+  xlab("Number of frame markers")
+dh2 <- ggplot (dat, aes(x = d_glo)) +
+  geom_histogram() +
+  xlab("Number of code glosses")
+dh3 <- ggplot (dat, aes(x = d_goa)) +
+  geom_histogram() +
+  xlab("Number of goal markers")
+dh4 <- ggplot (dat, aes(x = d_sum)) +
+  geom_histogram() +
+  xlab("Number of conclusion markers")
+dh5 <- ggplot (dat, aes(x = d_tra)) +
+  geom_histogram() +
+  xlab("Number of transition markers")
+dh6 <- ggplot (dat, aes(x = d_evi)) +
+  geom_histogram() +
+  xlab("Number of evidential markers")
+dh7 <- ggplot (dat, aes(x = d_org)) +
+  geom_histogram() +
+  xlab("Total number of organizational markers")
+
+plot_grid(dh1, dh2, dh3, dh4, dh5, dh6, dh7, 
+          labels=c("A", "B", "C", "D", "E", "F", "G"), ncol = 2, nrow = 4)
+```
+
+##### Stance Markers
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+#stance markers
+dh8 <- ggplot (dat, aes(x = d_att)) +
+  geom_histogram() +
+  xlab("Number of attitude markers")
+dh9 <- ggplot (dat, aes(x = d_boo)) +
+  geom_histogram() +
+  xlab("Number of boosters")
+dh10 <- ggplot (dat, aes(x = d_hed)) +
+  geom_histogram() +
+  xlab("Number of hedges")
+dh11 <- ggplot (dat, aes(x = d_slf)) +
+  geom_histogram() +
+  xlab("Number of self mentioning")
+dh12 <- ggplot (dat, aes(x = d_eng)) +
+  geom_histogram() +
+  xlab("Number of engagement markers")
+dh13 <- ggplot (dat, aes(x = d_sta)) +
+  geom_histogram() +
+  xlab("Total number of stance markers (without slf and eng)")
+dh14 <- ggplot (dat, aes(x = d_sta_pr)) +
+  geom_histogram() +
+  xlab("Total number of stance markers (with slf and eng)" )
+
+plot_grid(dh8, dh9, dh10, dh11, dh12, dh13, dh14,
+          labels=c("A", "B", "C", "D", "E", "F", "G"), ncol = 2, nrow = 4)
+
+```
+
+### 1.2 Summary Statistics (by Register)
+#### Writing Quality
+```{r, echo = FALSE}
+tapply(dat$score, dat$register, summary)
+
+```
+
+#### Lexical Variables
+```{r, echo=FALSE}
+stargazer(subset(dat[c("l_token", "l_vocd", "l_density_token_n", 
+                     "l_morph_token_n", "l_nom_token_n", "l_aw_token_n")], dat$register=="colloquial"),
+          title="Colloquial Lexical Features (per 100 words)", type = "text", digits=1,
+          covariate.labels = c("Total number of words", "VocD", "Content words", 
+                            "Morphologically complex words", "Nominalized words", "Academic words"))
+
+stargazer(subset(dat[c("l_token", "l_vocd", "l_density_token_n", 
+                     "l_morph_token_n", "l_nom_token_n", "l_aw_token_n")], dat$register=="academic"),
+          title="Academic Lexical Features (per 100 words)", type = "text", digits=1,
+          covariate.labels = c("Total number of words", "VocD", "Content words", 
+                            "Morphologically complex words", "Nominalized words", "Academic words"))
+
+```
+
+#### Syntactic Variables
+```{r, echo=FALSE}
+stargazer(subset(dat[c("s_mlc", "s_mlt", "s_cpt", 
+                     "s_ctpt", "s_dcpc", "s_dcpt",
+                     "s_cppc", "s_cppt", "s_cnpc",
+                     "s_cnpt", "s_vppt")], dat$register=="colloquial"),
+          title="Colloquial Syntactic Features", type = "text", digits=1,
+          covariate.labels = c("Mean length of clause", "Mean length of T-unit",
+                                 "Clauses per T-unit", "Complext T-unit per T-unit",
+                               "Dependent clauses per clause", "Dependent clauses per T-unit",
+                               "Coordinate phrases per clause", "Coordinate phrases per T-unit",
+                               "Complex nominals per clause", "Complex nominals per T-unit",
+                               "Verb phrases per T-unit"))
+
+stargazer(subset(dat[c("s_mlc", "s_mlt", "s_cpt", 
+                     "s_ctpt", "s_dcpc", "s_dcpt",
+                     "s_cppc", "s_cppt", "s_cnpc",
+                     "s_cnpt", "s_vppt")], dat$register=="academic"),
+          title="Academic Syntactic Features", type = "text", digits=1,
+          covariate.labels = c("Mean length of clause", "Mean length of T-unit",
+                                 "Clauses per T-unit", "Complext T-unit per T-unit",
+                               "Dependent clauses per clause", "Dependent clauses per T-unit",
+                               "Coordinate phrases per clause", "Coordinate phrases per T-unit",
+                               "Complex nominals per clause", "Complex nominals per T-unit",
+                               "Verb phrases per T-unit"))
+```
+
+#### Discourse Variables
+```{r, echo=FALSE}
+#Discriptive statistics for discourse variables
+stargazer(subset(text[c("d_frm", "d_glo", "d_goa", 
+                     "d_tra", "d_evi", "d_sum","d_org",
+                     "d_att", "d_boo", "d_hed", "d_slf", 
+                     "d_eng", "d_sta", "d_sta_pr")], dat$register=="colloquial"),
+          title="Colloquial discourse Features (raw counts)", type = "text", digits=1,
+          covariate.labels = c("Frame markers", "Code Glosses", "Goal markers", 
+                            "Transitional markers", "Evidential markers", "Conclusion markers",
+                            "Total number of organizational markers", 
+                            "Attitude markers", "Boosters", "Hedges", 
+                            "Self-mentioning", "Engagement markers",
+                            "Total number of stance markers (without slf and eng)",
+                            "Total number of stance markers (with slf and eng)"))
+
+stargazer(subset(text[c("d_frm", "d_glo", "d_goa", 
+                     "d_tra", "d_evi", "d_sum","d_org",
+                     "d_att", "d_boo", "d_hed", "d_slf", 
+                     "d_eng", "d_sta", "d_sta_pr")], dat$register=="academic"),
+          title="Academic discourse Features (raw counts)", type = "text", digits=1,
+          covariate.labels = c("Frame markers", "Code Glosses", "Goal markers", 
+                            "Transitional markers", "Evidential markers", "Conclusion markers",
+                            "Total number of organizational markers", 
+                            "Attitude markers", "Boosters", "Hedges", 
+                            "Self-mentioning", "Engagement markers",
+                            "Total number of stance markers (without slf and eng)",
+                            "Total number of stance markers (with slf and eng)"))
+
+```
+
+## Part 2: Principal Component Analyses of Lexical-syntactic Features
+### 2.1 Correlation Analyses
+```{r, include=FALSE}
+#generate a subset of data for lexcial-syntactic variables
+lexsyn = subset(dat,
+            select = c(l_vocd, l_morph_token_n, l_nom_token_n, l_density_token_n, l_aw_token_n,
+                      s_mlc, s_mlt, ##length of production unit
+                      s_cpt, s_ctpt, s_dcpc, s_dcpt, ##subordination
+                      s_cppc, s_cppt, ##coordination
+                      s_cnpc, s_cnpt, s_vppt) ##particular structures
+                      )
+head(lexsyn)
+# #Generate a subset of lexical and syntactic variables - colloquial only
+# lexsyn_col = subset(dat, dat$register=="colloquial",
+#             select = c(l_vocd, l_morph_token, l_nom_token, l_density_token, l_aw_token,
+#                       s_mlc, s_mlt, ##length of production unit
+#                       s_cpt, s_ctpt, s_dcpc, s_dcpt, ##subordination
+#                       s_cppc, s_cppt, ##coordination
+#                       s_cnpc, s_cnpt, s_vppt) ##particular structures
+#                       )
+# nrow(lexsyn_col)
+# 
+# #Generate a subset of lexical and syntactic variables - academic only
+# lexsyn_aca = subset(dat, dat$register=="academic",
+#             select = c(l_vocd, l_morph_token, l_nom_token, l_density_token, l_aw_token,
+#                       s_mlc, s_mlt, ##length of production unit
+#                       s_cpt, s_ctpt, s_dcpc, s_dcpt, ##subordination
+#                       s_cppc, s_cppt, ##coordination
+#                       s_cnpc, s_cnpt, s_vppt) ##particular structures
+#                       )
+# nrow(lexsyn_aca)
+
+```
+
+```{r, include = FALSE}
+lexsyn_matrix <- cor(lexsyn, method = "pearson", use = "complete.obs")
+write.csv(lexsyn_matrix, "lexsyn_matrix.csv")
+head(round(lexsyn_matrix, 2))
+
+# #for colloquial only
+# lexsyn_col_matrix <- cor(lexsyn_col, method = "pearson", use = "complete.obs")
+# write.csv(lexsyn_col_matrix, "lexsyn_col_matrix.csv")
+# 
+# #for academic only
+# lexsyn_aca_matrix <- cor(lexsyn_aca, method = "pearson", use = "complete.obs")
+# write.csv(lexsyn_aca_matrix, "lexsyn_aca_matrix.csv")
+```
+
+#### Correlation Matrix of all lexical-syntactic variables
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+corrplot(lexsyn_matrix, method="circle", type="lower")
+# corrplot(lexsyn_col_matrix, method="circle", type="lower")
+# corrplot(lexsyn_aca_matrix, method="circle", type="lower")
+```
+
+### 2.2 Principal Component Analysis
+```{r, include = FALSE}
+pca <- prcomp(na.omit(lexsyn), center = TRUE, scale = TRUE)
+summary(pca)
+```
+
+#### Biplot of PC1 and PC2
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+autoplot(pca, data=na.omit(text), colour = "register", 
+         loadings = TRUE, loadings.colour = "black",
+         loadings.label = TRUE, loadings.label.size = 4,
+         loadings.label.colour = "black")
+```
+
+#### Scree plot of variance explained
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+#Proportion of Variance Explained
+variances <- data.frame(variances = (pca$sdev^2)/sum(pca$sdev^2), pcomp=1:length(pca$sdev))
+ggplot(variances, aes(pcomp, variances)) +
+  geom_bar(stat="identity", fill="gray") +
+  geom_line() +
+  xlab("Principal Components") +
+  ylab("Proportion of Variance Explained")
+```
+
+#### Scree plot of cumulative variance explained
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+#Cumulative Variance Explained
+cumvar <- data.frame(cumvar = cumsum((pca$sdev^2)/sum(pca$sdev^2)), pcomp=1:length(pca$sdev))
+ggplot(cumvar, aes(pcomp, cumvar)) +
+  geom_bar(stat="identity", fill="gray") +
+  geom_line() +
+  xlab("Principal Components") +
+  ylab("Cumulative Variance Explained")
+```
+
+#### Examine the loadings of PC1 - PC4
+```{r, echo = FALSE}
+pca$rotation[, 1:4]
+```
+
+```{r, include = FALSE}
+#save principal components to the large data frame
+#Exclude missing data from the text-level data
+text <- na.omit(text)
+text$pc1 = pca$x[,1]
+text$pc2 = pca$x[,2]
+text$pc3 = pca$x[,3]
+text$pc4 = pca$x[,4]
+head(text)
+#Remerge text-level data to student-level data
+dat <- merge (text, stud, by="sid", all.x = TRUE)
+head(dat)
+```
+
+## Part 3: Exploratory Data Analyses (EDA) - Visualzations
+### 3.1 Cross-register variation as explained by English (L2) proficiency
+
+#### Writing Quality Variation over L2 Proficiency
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+wq.efset <- ggplot(dat, aes(efset_round, score)) +
+  geom_jitter(aes(color = factor(register))) +
+  xlab("L2 Proficiency Score") +
+  ylab("Writing Quality Score")
+wq.efset
+
+```
+
+#### Lexical-Syntactic Variation over L2 Proficiency
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+pc1.efset <- ggplot(dat, aes(efset_round, pc1)) +
+  geom_point(aes(color = factor(register))) +
+  xlab("L2 Proficiency Score") +
+  ylab("PC1") +
+  theme(legend.position="bottom")
+
+pc2.efset <- ggplot(dat, aes(efset_round, pc2)) +
+  geom_point(aes(color = factor(register))) +
+  xlab("L2 Proficiency Score") +
+  ylab("PC2")
+
+pc3.efset <- ggplot(dat, aes(efset_round, pc3)) +
+  geom_point(aes(color = factor(register))) +
+  xlab("L2 Proficiency Score") +
+  ylab("PC3")
+
+pc4.efset <- ggplot(dat, aes(efset_round, pc4)) +
+  geom_point(aes(color = factor(register))) +
+  xlab("L2 Proficiency Score") +
+  ylab("PC4")
+
+#add a common legend to the grid
+g_legend <- function(a.gplot) {
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+mylegend <- g_legend(pc1.efset)
+grid.arrange(arrangeGrob(pc1.efset +theme(legend.position="none"),
+                              pc2.efset + theme(legend.position="none"),
+                              pc3.efset + theme(legend.position="none"),
+                              pc4.efset + theme(legend.position="none"),
+                              nrow=2),
+                  mylegend, nrow=2, heights=c(10,1))
+```
+
+#### Discourse Features Variation over L2 Proficiency
+##### Organizational markers over L2 Proficiency
+```{r, echo = FALSE, message= FALSE, warning= FALSE}
+ggplot(dat, aes(efset_round, d_org_n))+
+   geom_jitter(aes(color = factor(register))) +
+   ylab("Number of organizational markers") +
+   xlab("English Proficieny Score")
+```
+
+##### Stance markers over L2 Proficiency
+```{r, echo = FALSE, message= FALSE, warning= FALSE}
+
+#Register-variation for specfic types of stance markers
+att.efset <- ggplot(dat, aes(efset_round, d_att_n))+
+  geom_jitter(aes(color = factor(register))) +
+  ylab("Number of attitude markers") +
+  xlab("English Proficieny Score")
+
+boo.efset <- ggplot(dat, aes(efset_round, d_boo))+
+  geom_jitter(aes(color = factor(register))) +
+  ylab("Number of boosters") +
+  xlab("English Proficieny Score")
+
+hed.efset <- ggplot(dat, aes(efset_round, d_hed_n))+
+  geom_jitter(aes(color = factor(register))) +
+  ylab("Number of hedges") +
+  xlab("English Proficieny Score")
+
+slf.efset <- ggplot(dat, aes(efset_round, d_slf_n))+
+  geom_jitter(aes(color = factor(register))) +
+  ylab("Number of self-mentioning") +
+  xlab("English Proficieny Score")
+
+eng.efset <- ggplot(dat, aes(efset_round, d_eng_n))+
+  geom_jitter(aes(color = factor(register))) +
+  ylab("Number of engagement markers") +
+  xlab("English Proficieny Score")
+
+grid.arrange(arrangeGrob(att.efset +theme(legend.position="none"),
+                        boo.efset + theme(legend.position="none"),
+                        hed.efset + theme(legend.position="none"),
+                        slf.efset + theme(legend.position="none"),
+                        eng.efset + theme(legend.position="none"),
+                        nrow=2),
+                        mylegend, nrow=2, heights=c(10,1))
+```
+
+### 3.2 Cross-register variation as explained by native language background (L1)
+#### Writing Quality Variation by L1
+```{r, echo=FALSE}
+score.native <- 
+  ggplot(na.omit(dat), aes(factor(native), score)) + 
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "score", fill = "register")
+
+score.native
+```
+
+#### Lexical-syntactic Variation by L1
+```{r, echo=FALSE, message = FALSE, warning = FALSE}
+pc1.native <- 
+  ggplot(na.omit(dat), aes(factor(native), pc1)) + 
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "PC1", fill = "register")
+
+pc2.native <- 
+  ggplot(na.omit(dat), aes(factor(native), pc2)) + 
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "PC2", fill = "register")
+
+pc3.native <- 
+  ggplot(na.omit(dat), aes(factor(native), pc3)) + 
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "PC3", fill = "register")
+
+pc4.native <- 
+  ggplot(na.omit(dat), aes(factor(native), pc4)) + 
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "PC4", fill = "register")
+
+
+grid.arrange(arrangeGrob(pc1.native +theme(legend.position="none"),
+                              pc2.native + theme(legend.position="none"),
+                              pc3.native + theme(legend.position="none"),
+                              pc4.native + theme(legend.position="none"),
+                              nrow=2),
+                  mylegend, nrow=2, heights=c(10,1))
+```
+
+#### Discourse Features Variation by L1
+##### Organizational markers by L1
+```{r, echo = FALSE, message= FALSE, warning= FALSE}
+ggplot(na.omit(dat), aes(factor(native), d_org_n)) +
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "Number of organizational markers", fill = "register")
+```
+
+##### Stance markers by L1
+```{r, echo = FALSE, message= FALSE, warning = FALSE}
+#Attitude markers
+att.native <- ggplot(na.omit(dat), aes(factor(native), d_att_n)) +
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "Number of attitude markers", fill = "register")
+
+#Boosters
+boo.native <- ggplot(na.omit(dat), aes(factor(native), d_boo_n)) +
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "Number of boosters", fill = "register")
+
+#Hedges
+hed.native <- ggplot(na.omit(dat), aes(factor(native), d_hed_n)) +
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "Number of hedges", fill = "register")
+
+#Self mentioning
+slf.native <- ggplot(na.omit(dat), aes(factor(native), d_slf_n)) +
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "Number of Self Mentioning", fill = "register")
+
+#Engagement
+eng.native <- ggplot(na.omit(dat), aes(factor(native), d_eng_n)) +
+  geom_boxplot(aes(fill = factor(register))) +
+  labs(x = "Native Language", y = "Number of Engagement Markers", fill = "register")
+
+grid.arrange(arrangeGrob(att.native +theme(legend.position="none"),
+                        boo.native + theme(legend.position="none"),
+                        hed.native + theme(legend.position="none"),
+                        slf.native + theme(legend.position="none"),
+                        eng.native + theme(legend.position="none"),
+                        nrow=2),
+                        mylegend, nrow=2, heights=c(10,1))
+```
+
+## Part 4: Multi-level Models
+### Multi-level Models of Cross-register Variation in Writing Quality
+
+```{r, include = FALSE}
+#excluding missing data
+dat = na.omit(dat)
+
+#relable reference group
+dat <- within(dat, register <- relevel(register, ref="colloquial"))
+
+#Standardize L2 Proficiency Score (z score of EFSET)
+dat$efset_std = (dat$efset_round - mean(dat$efset_round))/sd(dat$efset_round)
+summary(dat$efset_std)
+
+#Writing Quality
+QT.M1 <- lme4::lmer(score ~ 
+                      factor(register) + 
+                      l_token +
+                      (1|sid), data = dat)
+summary(QT.M1)
+
+QT.M2 <- lme4::lmer(score ~
+               factor(register)*efset_std +
+               factor(register)*factor(native) +
+                 l_token + program_m +
+               (1|sid), data = dat)
+summary(QT.M2)
+```
+
+#### Cross-register Variation in Writing Quality, predicted by L1 and L2
+```{r, echo=FALSE}
+#QT.M2
+fe = fixef(QT.M2)
+#Write the function
+calc = function(efset, Fr, Sp, Aca, QT.M2, u=0) {
+  score = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*efset + fe[[9]]*Aca*Fr + fe[[10]]*Aca*Sp +u
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+#Set up the dataframe for plotting
+Col.Fr=calc(efset, 1, 0, 0, QT.M2, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, score=Col.Fr, native="French")
+Col.Sp=calc(efset, 0, 1, 0, QT.M2, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, score=Col.Sp, native="Spanish")
+Col.Ch=calc(efset, 0, 0, 0, QT.M2, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, score=Col.Ch, native="Chinese")
+
+Aca.Fr=calc(efset, 1, 0, 1, QT.M2, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, score=Aca.Fr, native="French")
+Aca.Sp=calc(efset, 0, 1, 1, QT.M2, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, score=Aca.Sp, native="Spanish")
+Aca.Ch=calc(efset, 0, 0, 1, QT.M2, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, score=Aca.Ch, native="Chinese")
+
+median.score=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+
+#Visualize the model
+P.QT.M2 <- ggplot(data=median.score, aes(x=efset_std, y=score, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Writing Quality Score") 
+
+P.QT.M2
+```
+
+### Multi-level Models Cross-register Variation at Lexical-syntactic Level
+```{r, include = FALSE}
+
+#PC1
+LS.M1 <- lme4::lmer(pc1 ~ 
+                      factor(register) + 
+                      l_token +
+                      (1|sid), data = dat)
+summary(LS.M1)
+
+LS.M2 <- lme4::lmer(pc1 ~
+               factor(register) + efset_std +
+               factor(native) +
+                 l_token + program_m +
+               (1|sid), data = dat)
+summary(LS.M2)
+
+#PC2
+LS.M3 <- lme4::lmer(pc2 ~ 
+                      factor(register) + 
+                      l_token +
+                      (1|sid), data = dat)
+
+
+LS.M4 <- lme4::lmer(pc2 ~
+               factor(register)*efset_std +
+               factor(native) +
+                 l_token + program_m +
+               (1|sid), data = dat)
+summary(LS.M4)
+
+
+#PC3
+LS.M5 <- lme4::lmer(pc3 ~ 
+                      factor(register) + 
+                      l_token +
+                      (1|sid), data = dat)
+summary(LS.M5)
+
+LS.M6 <- lme4::lmer(pc3 ~
+               efset_std +
+               factor(register)*factor(native) +
+                 l_token + program_m +
+               (1|sid), data = dat)
+summary(LS.M6)
+
+#PC4
+LS.M7 <- lme4::lmer(pc4 ~ 
+                      factor(register) + 
+                      l_token +
+                      (1|sid), data = dat)
+summary(LS.M7)
+
+LS.M8 <- lme4::lmer(pc4 ~
+               factor(register)*efset_std +
+               factor(register)*factor(native) +
+                 l_token + program_m +
+               (1|sid), data = dat)
+summary(LS.M8)
+```
+
+```{r, echo = FALSE}
+stargazer(LS.M1, LS.M2, LS.M3, LS.M4, 
+          LS.M5, LS.M6, LS.M7, LS.M8, 
+          type = "text",
+          title="Modeling Cross-register variation in lexical-syntactic features",
+          covariate.labels=c("Register(Academic)", "L2 Proficiency", "L1(French)",
+                             "L1(Spanish)", "Text Length", "Program length", "L2 x Register",
+                             "L1(French) x Register", "L1(Spanish) x Register"))
+```
+
+#### Visualize the Model
+#### Cross-register Variation in Lexcial-syntacitc Features, predicted by L1 and L2
+
+```{r, include=FALSE}
+#LS.M2
+fe = fixef(LS.M2)
+#Write the function
+calc = function(efset, Fr, Sp, Aca, LS.M2, u=0) {
+  lexsyn_pc1 = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*184 + fe[[7]]*2 +u
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+#Set up the dataframe for plotting
+Col.Fr=calc(efset, 1, 0, 0, LS.M2, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, lexsyn_pc1=Col.Fr, native="French")
+Col.Sp=calc(efset, 0, 1, 0, LS.M2, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, lexsyn_pc1=Col.Sp, native="Spanish")
+Col.Ch=calc(efset, 0, 0, 0, LS.M2, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, lexsyn_pc1=Col.Ch, native="Chinese")
+
+Aca.Fr=calc(efset, 1, 0, 1, LS.M2, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, lexsyn_pc1=Aca.Fr, native="French")
+Aca.Sp=calc(efset, 0, 1, 1, LS.M2, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, lexsyn_pc1=Aca.Sp, native="Spanish")
+Aca.Ch=calc(efset, 0, 0, 1, LS.M2, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, lexsyn_pc1=Aca.Ch, native="Chinese")
+
+median.lexsyn_pc1=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+tail(median.lexsyn_pc1)
+
+#Visualize the model
+P.LS.M2 <- ggplot(data=median.lexsyn_pc1, aes(x=efset_std, y=lexsyn_pc1, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Lexical-Syntactic PC1") +
+  scale_y_continuous(limits = c(-2.5, 3))
+
+#LS.M4
+fe = fixef(LS.M4)
+median(dat$l_token)
+median(dat$program_m)
+#Write the function
+calc = function(efset, Fr, Sp, Aca, LS.M4, u=0) {
+  lexsyn_pc2 = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*efset +u
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+#Set up the dataframe for plotting
+Col.Fr=calc(efset, 1, 0, 0, LS.M4, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, lexsyn_pc2=Col.Fr, native="French")
+Col.Sp=calc(efset, 0, 1, 0, LS.M4, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, lexsyn_pc2=Col.Sp, native="Spanish")
+Col.Ch=calc(efset, 0, 0, 0, LS.M4, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, lexsyn_pc2=Col.Ch, native="Chinese")
+
+Aca.Fr=calc(efset, 1, 0, 1, LS.M4, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, lexsyn_pc2=Aca.Fr, native="French")
+Aca.Sp=calc(efset, 0, 1, 1, LS.M4, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, lexsyn_pc2=Aca.Sp, native="Spanish")
+Aca.Ch=calc(efset, 0, 0, 1, LS.M4, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, lexsyn_pc2=Aca.Ch, native="Chinese")
+
+median.lexsyn_pc2=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+tail(median.lexsyn_pc2)
+
+#Visualize the model
+P.LS.M4 <-ggplot(data=median.lexsyn_pc2, aes(x=efset_std, y=lexsyn_pc2, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Lexical-Syntactic PC2") +
+  scale_y_continuous(limits = c(-2.5, 3))
+
+#LS.M6
+fe = fixef(LS.M6)
+
+#Write the function
+calc = function(efset, Fr, Sp, Aca, LS.M6, u=0) {
+  lexsyn_pc3 = fe[[1]] + fe[[2]]*efset + fe[[3]]*Aca + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*Fr + fe[[9]]*Aca*Sp +u
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+#Set up the dataframe for plotting
+Col.Fr=calc(efset, 1, 0, 0, LS.M6, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, lexsyn_pc3=Col.Fr, native="French")
+Col.Sp=calc(efset, 0, 1, 0, LS.M6, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, lexsyn_pc3=Col.Sp, native="Spanish")
+Col.Ch=calc(efset, 0, 0, 0, LS.M6, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, lexsyn_pc3=Col.Ch, native="Chinese")
+
+Aca.Fr=calc(efset, 1, 0, 1, LS.M6, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, lexsyn_pc3=Aca.Fr, native="French")
+Aca.Sp=calc(efset, 0, 1, 1, LS.M6, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, lexsyn_pc3=Aca.Sp, native="Spanish")
+Aca.Ch=calc(efset, 0, 0, 1, LS.M6, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, lexsyn_pc3=Aca.Ch, native="Chinese")
+
+median.lexsyn_pc3=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+tail(median.lexsyn_pc3)
+
+#Visualize the model
+P.LS.M6 <-ggplot(data=median.lexsyn_pc3, aes(x=efset_std, y=lexsyn_pc3, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Lexical-Syntactic PC3") +
+  scale_y_continuous(limits = c(-2.5, 3))
+
+```
+
+```{r, echo=FALSE}
+P.LS.M2
+P.LS.M4
+P.LS.M6
+
+```
+
+### Multi-level Models of Cross-register variation at discourse level 
+#### (with overdispersion random intercepts)
+
+```{r, include=FALSE}
+#Standardize program length variable (z score of program_m)
+dat$program_std = (dat$program_m - mean(dat$program_m))/sd(dat$program_m)
+summary(dat$program_std)
+
+#Modeling organizational markers
+DM.M1 <- glmer(d_org ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M1)
+
+DM.M2 <- glmer(d_org ~ 
+            efset_std +
+            factor(register)*factor(native) + program_m +
+            (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M2)
+
+#Modeling stance markers by type
+#Attitude markers
+DM.M3 <- glmer(d_att ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M3)
+
+DM.M4 <- glmer(d_att ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+              (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M4)
+
+#Boosters
+DM.M5 <- glmer(d_boo ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M5)
+
+DM.M6 <- glmer(d_boo ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+              (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M6)
+
+#Hedges
+DM.M7 <- glmer(d_hed ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M7)
+
+DM.M8 <- glmer(d_hed ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+              (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M8)
+
+#Self-mentioning
+DM.M9 <- glmer(d_slf ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M9)
+
+DM.M10 <- glmer(d_slf ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+              (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M10)
+
+#Engagement
+DM.M11 <- glmer(d_eng ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M11)
+
+DM.M12 <- glmer(d_eng ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+              (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M12)
+
+#Stance markers (hedge + booster + attitude)
+DM.M13 <- glmer(d_sta ~ factor(register) + (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M13)
+
+DM.M14 <- glmer(d_sta ~ 
+            factor(register) + efset_std +
+            factor(native) + program_m +
+              (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+summary(DM.M14)
+
+```
+
+```{r, echo = FALSE}
+
+stargazer(DM.M1, DM.M3, DM.M5, 
+          DM.M7, DM.M9, DM.M11, DM.M13,
+          type = "text",
+          title="Modeling Cross-register variation in discourse features",
+          covariate.labels=c("Register(Academic)"))
+
+stargazer(DM.M2, DM.M4, DM.M6, 
+          DM.M8, DM.M10, DM.M12, DM.M14,
+          type = "text",
+          title="Modeling Cross-register variation in discourse features",
+          covariate.labels=c("Register(Academic)", "L2 Proficiency", "L1(French)",
+                             "L1(Spanish)", "Program length", "L2 x Register",
+                             "L1(French) x Register", "L1(Spanish) x Register"))
+```
+
+#### Visualize the model
+#### Cross-register Variation in Discourse Features, predicted by L1 and L2
+```{r, include=FALSE}
+#DM.M2
+fe = fixef(DM.M2)
+
+#Write the function
+calc.probs = function(efset, Fr, Sp, Aca, DM.M2, u=0) {
+  org = fe[[1]] + fe[[2]]*efset + fe[[3]]*Aca + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*2 + fe[[7]]*Aca*Fr + fe[[8]]*Aca*Sp + u
+  invlogit(org)
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+
+#Set up the dataframe for plotting
+Col.Fr=calc.probs(efset, 1, 0, 0, DM.M2, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, org=Col.Fr, native="French")
+Col.Sp=calc.probs(efset, 0, 1, 0, DM.M2, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, org=Col.Sp, native="Spanish")
+Col.Ch=calc.probs(efset, 0, 0, 0, DM.M2, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, org=Col.Ch, native="Chinese")
+
+Aca.Fr=calc.probs(efset, 1, 0, 1, DM.M2, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, org=Aca.Fr, native="French")
+Aca.Sp=calc.probs(efset, 0, 1, 1, DM.M2, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, org=Aca.Sp, native="Spanish")
+Aca.Ch=calc.probs(efset, 0, 0, 1, DM.M2, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, org=Aca.Ch, native="Chinese")
+
+median.org=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+
+#Visualize the model
+P.DM.M2 <-ggplot(data=median.org, aes(x=efset_std, y=org, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Organizational Markers (Probability)") 
+
+
+#DM.M12
+fe = fixef(DM.M12)
+
+#Write the function
+calc.probs = function(efset, Fr, Sp, Aca, DM.M12, u=0) {
+  eng = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*2 + fe[[7]]*Aca*efset + fe[[8]]*Aca*Fr + fe[[9]]*Aca*Sp + u
+  invlogit(eng)
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+
+#Set up the dataframe for plotting
+Col.Fr=calc.probs(efset, 1, 0, 0, DM.M12, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, eng=Col.Fr, native="French")
+Col.Sp=calc.probs(efset, 0, 1, 0, DM.M12, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, eng=Col.Sp, native="Spanish")
+Col.Ch=calc.probs(efset, 0, 0, 0, DM.M12, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, eng=Col.Ch, native="Chinese")
+
+Aca.Fr=calc.probs(efset, 1, 0, 1, DM.M12, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, eng=Aca.Fr, native="French")
+Aca.Sp=calc.probs(efset, 0, 1, 1, DM.M12, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, eng=Aca.Sp, native="Spanish")
+Aca.Ch=calc.probs(efset, 0, 0, 1, DM.M12, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, eng=Aca.Ch, native="Chinese")
+
+median.eng=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+
+#Visualize the model
+P.DM.M12 <-ggplot(data=median.eng, aes(x=efset_std, y=eng, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Engagement Markers (Probability)") 
+
+#DM.M14
+fe = fixef(DM.M14)
+
+#Write the function
+calc.probs = function(efset, Fr, Sp, Aca, DM.M14, u=0) {
+  sta = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*2 + u
+  invlogit(sta)
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+
+#Set up the dataframe for plotting
+Col.Fr=calc.probs(efset, 1, 0, 0, DM.M14, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, sta=Col.Fr, native="French")
+Col.Sp=calc.probs(efset, 0, 1, 0, DM.M14, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, sta=Col.Sp, native="Spanish")
+Col.Ch=calc.probs(efset, 0, 0, 0, DM.M14, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, sta=Col.Ch, native="Chinese")
+
+Aca.Fr=calc.probs(efset, 1, 0, 1, DM.M14, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, sta=Aca.Fr, native="French")
+Aca.Sp=calc.probs(efset, 0, 1, 1, DM.M14, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, sta=Aca.Sp, native="Spanish")
+Aca.Ch=calc.probs(efset, 0, 0, 1, DM.M14, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, sta=Aca.Ch, native="Chinese")
+
+median.sta=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+
+#Visualize the model
+P.DM.M14 <-ggplot(data=median.sta, aes(x=efset_std, y=sta, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Stance Markers (Probability)") 
+
+```
+```{r, echo=FALSE}
+P.DM.M2
+P.DM.M14
+
+```
+
+### Model converge issue - example
+```{r}
+glmer(d_org ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+            (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+
+glmer(d_sta ~ 
+            factor(register)*efset_std +
+            factor(register)*factor(native) + program_m +
+            (1|sid) + (1|tid),
+          family=poisson,
+          offset=log(l_token),
+          data=dat)
+
+```
+
+### Model diagnosis - PC1
+```{r, echo=FALSE}
+plot(LS.M2)
+```
+
+### Model diagnosis - PC2
+```{r, echo=FALSE}
+plot(LS.M4)
+```
+
+### Model diagnosis - PC3
+```{r, echo=FALSE}
+plot(LS.M6)
+```
+
+### Model diagnosis - PC4
+```{r, echo=FALSE}
+plot(LS.M8)
+```
+
+### Model diagnosis - ORG
+```{r, echo=FALSE}
+plot(DM.M2)
+```
+
+### Model diagnosis - STA
+```{r, echo=FALSE}
+plot(DM.M14)
+```
+
+### Model diagnosis - Quality
+```{r, echo=FALSE}
+plot(QT.M2)
+```
+
+### Role of text length
+```{r, echo=FALSE}
+ggplot(data=dat) +
+  geom_point(aes(x = l_token, y=pc1))
+
+ggplot(data=dat) +
+  geom_point(aes(x = l_token, y=pc2))
+
+ggplot(data=dat) +
+  geom_point(aes(x = l_token, y=pc3))
+
+ggplot(data=dat) +
+  geom_point(aes(x = l_token, y=pc4))
+
+```
+

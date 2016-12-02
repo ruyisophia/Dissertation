@@ -33,7 +33,7 @@ library( tidyr )
 theme_set(theme_grey())
 
 #setup working directory
-setwd("/Users/ruyi/Dropbox/Dissertation/Analysis/R")
+setwd("/Users/wenjuanqin/Dropbox/Dissertation/Analysis/R/GitHub")
 getwd()
 
 #load raw data
@@ -734,81 +734,12 @@ stargazer(LS.M1, LS.M2, LS.M3, LS.M4,
 #### Cross-register Variation in Lexcial-syntacitc Features, predicted by L1 and L2
 
 ```{r, include=FALSE}
-# visualize individual variation in PC1 by register
-
-pc1.register = ddply(dat, # input dataframe
-    .(sid),  # group by student
-    summarize,  # create new columns as follows: 
-    Academic=mean(pc1[register=="academic"], na.rm=TRUE),
-    Colloquial=mean(pc1 [register=="colloquial"], na.rm=TRUE)
-    )
-pc1.register
-
-ggplot(pc1.register, 
-    aes(x=Academic,   # put Academic PC1s on x-axis
-    y=Colloquial, # and Colloquial PC1s on y-axis
-    )) +      
-    geom_point(aes(color="empirical proportion")) +  # make a scatter-plot
-    xlim(-4.5,15.5) + # make the limits for the x-axis 
-    ylim(-4.5,15.5) + # and y-axis the same
-    geom_abline(
-        intercept=0, 
-        slope=1,
-        ) +
-    coord_fixed() # force square aspect ratio
-
-###END OF THE DAY
-# create a data frame with one row per individual
-student.native = ddply(dat, 
-    .(sid),    # group by student
-    summarize,    # create columns as follows:
-    native=native[1], # one column for type
-    # and one column for standardized mean(belong):
-    l_token=l_token[1],
-    program_m=program_m[1],
-    efset_std=efset_std[1]
-    )
-
-# first make a dataframe of academic
-new.aca = student.native
-new.aca["register"]="academic"
-# then a dataframe of colloquial
-new.col = student.native
-new.col["register"]="colloquial"
-# then merge them
-new.data = rbind(new.aca, new.col)
-head(new.data)
-
-
-# generate predictions using the PC1 Model:
-new.data["pc1.pred"] = predict(
-    LS.M2,        # PC1 Model
-    newdata=new.data, # to generate predictions for
-    type="response")      # predicted pc1
-
-# generate predictions using the model with level-2 covariates
-new.students["level_2"] = predict(
-    mcc.q3.both, 
-    newdata=new.students, # same students
-    type="response")      # probabilities
-# make a separate row for each model
-new.gathered = gather(new.students, 
-    "model", # key
-    "pred",  # value
-    rand_slope, # the two columns...
-    level_2     # to be turned into one
-    )
-
-```
-
-
-```{r, include=FALSE}
-#LS.M2
+#LS.M2.1 (with interaction)
 fe = fixef(LS.M2)
 #Write the function
 calc = function(efset, Fr, Sp, Aca, LS.M2, u=0) {
   lexsyn_pc1 = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
-    fe[[6]]*184 + fe[[7]]*2 +u
+    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*efset*Aca + fe[[9]]*Aca*Fr + fe[[10]]*Aca*Sp +u
 }
 
 efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
@@ -840,12 +771,11 @@ P.LS.M2 <- ggplot(data=median.lexsyn_pc1, aes(x=efset_std, y=lexsyn_pc1, col=nat
 
 #LS.M4
 fe = fixef(LS.M4)
-median(dat$l_token)
-median(dat$program_m)
+
 #Write the function
 calc = function(efset, Fr, Sp, Aca, LS.M4, u=0) {
   lexsyn_pc2 = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
-    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*efset +u
+    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*efset + fe[[9]]*Aca*Fr + fe[[10]]*Aca*Sp +u
 }
 
 efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
@@ -881,7 +811,7 @@ fe = fixef(LS.M6)
 #Write the function
 calc = function(efset, Fr, Sp, Aca, LS.M6, u=0) {
   lexsyn_pc3 = fe[[1]] + fe[[2]]*efset + fe[[3]]*Aca + fe[[4]]*Fr + fe[[5]]*Sp + 
-    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*Fr + fe[[9]]*Aca*Sp +u
+    fe[[6]]*184 + fe[[7]]*2 + fe[[8]]*Aca*efset + fe[[9]]*Aca*Fr + fe[[10]]*Aca*Sp +u
 }
 
 efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
@@ -929,117 +859,145 @@ dat$program_std = (dat$program_m - mean(dat$program_m))/sd(dat$program_m)
 summary(dat$program_std)
 
 #Modeling organizational markers
-DM.M1 <- glmer(d_org ~ factor(register) + (1|sid) + (1|tid),
+DM.M1 <- glmer(d_org ~ register + (1|sid) + (1|tid),
           family=poisson,
           offset=log(l_token),
           data=dat)
 summary(DM.M1)
 
 DM.M2 <- glmer(d_org ~ 
-            efset_std +
-            factor(register)*factor(native) + program_m +
+            register*efset_std +
+            register*native + program_m +
             (1|sid) + (1|tid),
           family=poisson,
           offset=log(l_token),
-          data=dat)
+          data=dat,
+          control = glmerControl(optimizer = "bobyqa"))
 summary(DM.M2)
 
 #Modeling stance markers by type
-#Attitude markers
-DM.M3 <- glmer(d_att ~ factor(register) + (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M3)
-
-DM.M4 <- glmer(d_att ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-              (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M4)
-
-#Boosters
-DM.M5 <- glmer(d_boo ~ factor(register) + (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M5)
-
-DM.M6 <- glmer(d_boo ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-              (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M6)
-
-#Hedges
-DM.M7 <- glmer(d_hed ~ factor(register) + (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M7)
-
-DM.M8 <- glmer(d_hed ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-              (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M8)
-
-#Self-mentioning
-DM.M9 <- glmer(d_slf ~ factor(register) + (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M9)
-
-DM.M10 <- glmer(d_slf ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-              (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M10)
-
-#Engagement
-DM.M11 <- glmer(d_eng ~ factor(register) + (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M11)
-
-DM.M12 <- glmer(d_eng ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-              (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-summary(DM.M12)
+# #Attitude markers
+# DM.M3 <- glmer(d_att ~ factor(register) + (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M3)
+# 
+# DM.M4 <- glmer(d_att ~ 
+#             factor(register)*efset_std +
+#             factor(register)*factor(native) + program_m +
+#               (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M4)
+# 
+# #Boosters
+# DM.M5 <- glmer(d_boo ~ factor(register) + (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M5)
+# 
+# DM.M6 <- glmer(d_boo ~ 
+#             factor(register)*efset_std +
+#             factor(register)*factor(native) + program_m +
+#               (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M6)
+# 
+# #Hedges
+# DM.M7 <- glmer(d_hed ~ factor(register) + (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M7)
+# 
+# DM.M8 <- glmer(d_hed ~ 
+#             factor(register)*efset_std +
+#             factor(register)*factor(native) + program_m +
+#               (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M8)
+# 
+# #Self-mentioning
+# DM.M9 <- glmer(d_slf ~ factor(register) + (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M9)
+# 
+# DM.M10 <- glmer(d_slf ~ 
+#             factor(register)*efset_std +
+#             factor(register)*factor(native) + program_m +
+#               (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M10)
+# 
+# #Engagement
+# DM.M11 <- glmer(d_eng ~ factor(register) + (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M11)
+# 
+# DM.M12 <- glmer(d_eng ~ 
+#             factor(register)*efset_std +
+#             factor(register)*factor(native) + program_m +
+#               (1|sid) + (1|tid),
+#           family=poisson,
+#           offset=log(l_token),
+#           data=dat)
+# summary(DM.M12)
 
 #Stance markers (hedge + booster + attitude)
-DM.M13 <- glmer(d_sta ~ factor(register) + (1|sid) + (1|tid),
+DM.M13 <- glmer(d_sta ~ register + (1|sid) + (1|tid),
           family=poisson,
           offset=log(l_token),
           data=dat)
 summary(DM.M13)
 
 DM.M14 <- glmer(d_sta ~ 
-            factor(register) + efset_std +
-            factor(native) + program_m +
+            register*efset_std +
+            register*native + program_m +
               (1|sid) + (1|tid),
           family=poisson,
           offset=log(l_token),
-          data=dat)
+          data=dat,
+          control = glmerControl(optimizer = "bobyqa"))
 summary(DM.M14)
+
+# fitting the stance model without interaction between register and L1
+DM.M14.noint.L1 <- glmer(d_sta ~
+                        register*efset_std + native + program_m +
+                        (1|sid) + (1|tid),
+                      family=poisson,
+                      offset=log(l_token),
+                      data=dat)
+summary(DM.M14.noint.L1)
+
+# fitting the stance model without interaction between register and L2
+DM.M14.noint.L2 <- glmer(d_sta ~
+                        efset_std + register*native + program_m +
+                        (1|sid) + (1|tid),
+                      family=poisson,
+                      offset=log(l_token),
+                      data=dat,
+                      control = glmerControl(optimizer = "bobyqa"))
+summary(DM.M14.noint.L2)
+
+# Comparing stance models with and without interaction
+anova(DM.M14, DM.M14.noint.L1, DM.M14.noint.L2)
+
+
+
+
 
 ```
 
@@ -1069,7 +1027,7 @@ fe = fixef(DM.M2)
 #Write the function
 calc.probs = function(efset, Fr, Sp, Aca, DM.M2, u=0) {
   org = fe[[1]] + fe[[2]]*efset + fe[[3]]*Aca + fe[[4]]*Fr + fe[[5]]*Sp + 
-    fe[[6]]*2 + fe[[7]]*Aca*Fr + fe[[8]]*Aca*Sp + u
+    fe[[6]]*2 + fe[[7]]*Aca*efset + fe[[8]]*Aca*Fr + fe[[9]]*Aca*Sp + u
   invlogit(org)
 }
 
@@ -1100,49 +1058,13 @@ P.DM.M2 <-ggplot(data=median.org, aes(x=efset_std, y=org, col=native)) +
   ylab("Organizational Markers (Probability)") 
 
 
-#DM.M12
-fe = fixef(DM.M12)
-
-#Write the function
-calc.probs = function(efset, Fr, Sp, Aca, DM.M12, u=0) {
-  eng = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
-    fe[[6]]*2 + fe[[7]]*Aca*efset + fe[[8]]*Aca*Fr + fe[[9]]*Aca*Sp + u
-  invlogit(eng)
-}
-
-efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
-
-#Set up the dataframe for plotting
-Col.Fr=calc.probs(efset, 1, 0, 0, DM.M12, 0)
-Col.Fr=data.frame(register="colloquial", efset_std=efset, eng=Col.Fr, native="French")
-Col.Sp=calc.probs(efset, 0, 1, 0, DM.M12, 0)
-Col.Sp=data.frame(register="colloquial", efset_std=efset, eng=Col.Sp, native="Spanish")
-Col.Ch=calc.probs(efset, 0, 0, 0, DM.M12, 0)
-Col.Ch=data.frame(register="colloquial", efset_std=efset, eng=Col.Ch, native="Chinese")
-
-Aca.Fr=calc.probs(efset, 1, 0, 1, DM.M12, 0)
-Aca.Fr=data.frame(register="academic", efset_std=efset, eng=Aca.Fr, native="French")
-Aca.Sp=calc.probs(efset, 0, 1, 1, DM.M12, 0)
-Aca.Sp=data.frame(register="academic", efset_std=efset, eng=Aca.Sp, native="Spanish")
-Aca.Ch=calc.probs(efset, 0, 0, 1, DM.M12, 0)
-Aca.Ch=data.frame(register="academic", efset_std=efset, eng=Aca.Ch, native="Chinese")
-
-median.eng=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
-
-#Visualize the model
-P.DM.M12 <-ggplot(data=median.eng, aes(x=efset_std, y=eng, col=native)) +
-  geom_line(aes(linetype=register)) +
-  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
-  xlab("Standardized L2 Proficiency") +
-  ylab("Engagement Markers (Probability)") 
-
 #DM.M14
 fe = fixef(DM.M14)
 
 #Write the function
 calc.probs = function(efset, Fr, Sp, Aca, DM.M14, u=0) {
   sta = fe[[1]] + fe[[2]]*Aca + fe[[3]]*efset + fe[[4]]*Fr + fe[[5]]*Sp + 
-    fe[[6]]*2 + u
+    fe[[6]]*2 + fe[[7]]*Aca*efset + fe[[8]]*Aca*Fr + fe[[9]]*Aca*Sp + u
   invlogit(sta)
 }
 
@@ -1172,32 +1094,50 @@ P.DM.M14 <-ggplot(data=median.sta, aes(x=efset_std, y=sta, col=native)) +
   xlab("Standardized L2 Proficiency") +
   ylab("Stance Markers (Probability)") 
 
+#DM.M14.noint.L2
+fe = fixef(DM.M14.noint.L2)
+
+#Write the function
+calc.probs = function(efset, Fr, Sp, Aca, DM.M14.noint.L2, u=0) {
+  sta = fe[[1]] + fe[[2]]*efset + fe[[3]]*Aca + fe[[4]]*Fr + fe[[5]]*Sp + 
+    fe[[6]]*2 + fe[[7]]*Aca*Fr + fe[[8]]*Aca*Sp + u
+  invlogit(sta)
+}
+
+efset=seq(min(dat$efset_std), max(dat$efset_std), length.out=100)
+
+#Set up the dataframe for plotting
+Col.Fr=calc.probs(efset, 1, 0, 0, DM.M14.noint.L2, 0)
+Col.Fr=data.frame(register="colloquial", efset_std=efset, sta=Col.Fr, native="French")
+Col.Sp=calc.probs(efset, 0, 1, 0, DM.M14.noint.L2, 0)
+Col.Sp=data.frame(register="colloquial", efset_std=efset, sta=Col.Sp, native="Spanish")
+Col.Ch=calc.probs(efset, 0, 0, 0, DM.M14.noint.L2, 0)
+Col.Ch=data.frame(register="colloquial", efset_std=efset, sta=Col.Ch, native="Chinese")
+
+Aca.Fr=calc.probs(efset, 1, 0, 1, DM.M14.noint.L2, 0)
+Aca.Fr=data.frame(register="academic", efset_std=efset, sta=Aca.Fr, native="French")
+Aca.Sp=calc.probs(efset, 0, 1, 1, DM.M14.noint.L2, 0)
+Aca.Sp=data.frame(register="academic", efset_std=efset, sta=Aca.Sp, native="Spanish")
+Aca.Ch=calc.probs(efset, 0, 0, 1, DM.M14.noint.L2, 0)
+Aca.Ch=data.frame(register="academic", efset_std=efset, sta=Aca.Ch, native="Chinese")
+
+median.sta=rbind(Col.Fr, Col.Sp, Col.Ch, Aca.Fr, Aca.Sp, Aca.Ch)
+
+#Visualize the model
+P.DM.M14.noint.L2 <-ggplot(data=median.sta, aes(x=efset_std, y=sta, col=native)) +
+  geom_line(aes(linetype=register)) +
+  scale_linetype_manual(breaks=c("academic", "colloquial"), values=c(2, 1)) +
+  xlab("Standardized L2 Proficiency") +
+  ylab("Stance Markers (Probability)") 
+
 ```
 ```{r, echo=FALSE}
 P.DM.M2
 P.DM.M14
+P.DM.M14.noint.L2
 
 ```
 
-### Model converge issue - example
-```{r}
-glmer(d_org ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-            (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-
-glmer(d_sta ~ 
-            factor(register)*efset_std +
-            factor(register)*factor(native) + program_m +
-            (1|sid) + (1|tid),
-          family=poisson,
-          offset=log(l_token),
-          data=dat)
-
-```
 
 ### Model diagnosis - PC1
 ```{r, echo=FALSE}

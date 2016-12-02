@@ -24,6 +24,8 @@ library( lmtest )
 library( texreg )
 library( stargazer )
 library( FactoMineR )
+library( plyr )
+library( tidyr )
 
 
 
@@ -31,7 +33,7 @@ library( FactoMineR )
 theme_set(theme_grey())
 
 #setup working directory
-setwd("/Users/wenjuanqin/Dropbox/Dissertation/Analysis/R")
+setwd("/Users/ruyi/Dropbox/Dissertation/Analysis/R")
 getwd()
 
 #load raw data
@@ -593,6 +595,9 @@ grid.arrange(arrangeGrob(att.native +theme(legend.position="none"),
 ```{r, include = FALSE}
 #excluding missing data
 dat = na.omit(dat)
+#Set up variable types
+dat$register = as.factor(dat$register)
+dat$native = as.factor(dat$native)
 
 #relable reference group
 dat <- within(dat, register <- relevel(register, ref="colloquial"))
@@ -603,14 +608,14 @@ summary(dat$efset_std)
 
 #Writing Quality
 QT.M1 <- lme4::lmer(score ~ 
-                      factor(register) + 
+                      register + 
                       l_token +
                       (1|sid), data = dat)
 summary(QT.M1)
 
 QT.M2 <- lme4::lmer(score ~
-               factor(register)*efset_std +
-               factor(register)*factor(native) +
+               register*efset_std +
+               register*native +
                  l_token + program_m +
                (1|sid), data = dat)
 summary(QT.M2)
@@ -659,28 +664,28 @@ P.QT.M2
 
 #PC1
 LS.M1 <- lme4::lmer(pc1 ~ 
-                      factor(register) + 
+                      register + 
                       l_token +
                       (1|sid), data = dat)
 summary(LS.M1)
 
 LS.M2 <- lme4::lmer(pc1 ~
-               factor(register) + efset_std +
-               factor(native) +
+               register*efset_std +
+               register*native +
                  l_token + program_m +
                (1|sid), data = dat)
 summary(LS.M2)
 
 #PC2
 LS.M3 <- lme4::lmer(pc2 ~ 
-                      factor(register) + 
+                      register + 
                       l_token +
                       (1|sid), data = dat)
 
 
 LS.M4 <- lme4::lmer(pc2 ~
-               factor(register)*efset_std +
-               factor(native) +
+               register*efset_std +
+               register*native +
                  l_token + program_m +
                (1|sid), data = dat)
 summary(LS.M4)
@@ -688,28 +693,28 @@ summary(LS.M4)
 
 #PC3
 LS.M5 <- lme4::lmer(pc3 ~ 
-                      factor(register) + 
+                      register + 
                       l_token +
                       (1|sid), data = dat)
 summary(LS.M5)
 
 LS.M6 <- lme4::lmer(pc3 ~
-               efset_std +
-               factor(register)*factor(native) +
+               register*efset_std +
+               register*native +
                  l_token + program_m +
                (1|sid), data = dat)
 summary(LS.M6)
 
 #PC4
 LS.M7 <- lme4::lmer(pc4 ~ 
-                      factor(register) + 
+                      register + 
                       l_token +
                       (1|sid), data = dat)
 summary(LS.M7)
 
 LS.M8 <- lme4::lmer(pc4 ~
-               factor(register)*efset_std +
-               factor(register)*factor(native) +
+               register*efset_std +
+               register*native +
                  l_token + program_m +
                (1|sid), data = dat)
 summary(LS.M8)
@@ -727,6 +732,75 @@ stargazer(LS.M1, LS.M2, LS.M3, LS.M4,
 
 #### Visualize the Model
 #### Cross-register Variation in Lexcial-syntacitc Features, predicted by L1 and L2
+
+```{r, include=FALSE}
+# visualize individual variation in PC1 by register
+
+pc1.register = ddply(dat, # input dataframe
+    .(sid),  # group by student
+    summarize,  # create new columns as follows: 
+    Academic=mean(pc1[register=="academic"], na.rm=TRUE),
+    Colloquial=mean(pc1 [register=="colloquial"], na.rm=TRUE)
+    )
+pc1.register
+
+ggplot(pc1.register, 
+    aes(x=Academic,   # put Academic PC1s on x-axis
+    y=Colloquial, # and Colloquial PC1s on y-axis
+    )) +      
+    geom_point(aes(color="empirical proportion")) +  # make a scatter-plot
+    xlim(-4.5,15.5) + # make the limits for the x-axis 
+    ylim(-4.5,15.5) + # and y-axis the same
+    geom_abline(
+        intercept=0, 
+        slope=1,
+        ) +
+    coord_fixed() # force square aspect ratio
+
+###END OF THE DAY
+# create a data frame with one row per individual
+student.native = ddply(dat, 
+    .(sid),    # group by student
+    summarize,    # create columns as follows:
+    native=native[1], # one column for type
+    # and one column for standardized mean(belong):
+    l_token=l_token[1],
+    program_m=program_m[1],
+    efset_std=efset_std[1]
+    )
+
+# first make a dataframe of academic
+new.aca = student.native
+new.aca["register"]="academic"
+# then a dataframe of colloquial
+new.col = student.native
+new.col["register"]="colloquial"
+# then merge them
+new.data = rbind(new.aca, new.col)
+head(new.data)
+
+
+# generate predictions using the PC1 Model:
+new.data["pc1.pred"] = predict(
+    LS.M2,        # PC1 Model
+    newdata=new.data, # to generate predictions for
+    type="response")      # predicted pc1
+
+# generate predictions using the model with level-2 covariates
+new.students["level_2"] = predict(
+    mcc.q3.both, 
+    newdata=new.students, # same students
+    type="response")      # probabilities
+# make a separate row for each model
+new.gathered = gather(new.students, 
+    "model", # key
+    "pred",  # value
+    rand_slope, # the two columns...
+    level_2     # to be turned into one
+    )
+
+```
+
 
 ```{r, include=FALSE}
 #LS.M2
